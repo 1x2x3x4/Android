@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">CampusAttendance</string>
     <string name="app_title_cn">校园考勤打卡</string>
+    <string name="nav_home">首页</string>
+    <string name="nav_record">记录</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_profile">我的</string>
 </resources>

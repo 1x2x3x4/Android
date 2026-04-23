@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.haoyinrui.campusattendance.R;
 import com.haoyinrui.campusattendance.model.AttendanceRecord;
+import com.haoyinrui.campusattendance.util.AttendanceStatusHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,11 +20,20 @@ import java.util.List;
  */
 public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.RecordViewHolder> {
     private final List<AttendanceRecord> records = new ArrayList<>();
+    private OnRecordClickListener onRecordClickListener;
+
+    public interface OnRecordClickListener {
+        void onRecordClick(AttendanceRecord record);
+    }
 
     public void setRecords(List<AttendanceRecord> newRecords) {
         records.clear();
         records.addAll(newRecords);
         notifyDataSetChanged();
+    }
+
+    public void setOnRecordClickListener(OnRecordClickListener listener) {
+        onRecordClickListener = listener;
     }
 
     @NonNull
@@ -40,7 +50,15 @@ public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.Re
         holder.textDate.setText("日期：" + record.getDate());
         holder.textCheckIn.setText("签到：" + displayTime(record.getCheckInTime()));
         holder.textCheckOut.setText("签退：" + displayTime(record.getCheckOutTime()));
-        holder.textStatus.setText("状态：" + record.getStatus());
+        holder.textStatus.setText("状态：" + AttendanceStatusHelper.normalizeStatus(record.getStatus()));
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (onRecordClickListener != null) {
+                    onRecordClickListener.onRecordClick(record);
+                }
+            }
+        });
     }
 
     @Override

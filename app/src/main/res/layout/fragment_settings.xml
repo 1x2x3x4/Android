@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/page_bg"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="考勤设置"
+            android:textColor="@color/text_primary"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="配置时间规则、提醒、校园范围校验和答辩演示数据。"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="签到开始时间"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="早于该时间不能签到，用于避免提前打卡。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editSignInStart"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="07:30"
+            android:inputType="time"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="签到截止时间"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="晚于该时间签到会被系统判定为迟到。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editSignInEnd"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="08:10"
+            android:inputType="time"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="签退允许开始时间"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="早于该时间签退会被系统判定为早退。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editCheckOutStart"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="17:00"
+            android:inputType="time"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="签退截止时间"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="超过该时间仍未签退会被系统判定为缺卡。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editCheckOutEnd"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="22:00"
+            android:inputType="time"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchSignInReminder"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="16dp"
+            android:text="开启签到提醒"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchCheckOutReminder"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="开启签退提醒"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchLocationCheck"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="开启校园范围定位校验"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="开启后，签到时会校验当前位置是否在校园半径范围内。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="校园中心纬度"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editCampusLatitude"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="39.9042"
+            android:inputType="numberDecimal|numberSigned"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="校园中心经度"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editCampusLongitude"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="116.4074"
+            android:inputType="numberDecimal|numberSigned"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="允许半径（米）"
+            android:textColor="@color/text_primary"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatEditText
+            android:id="@+id/editCampusRadius"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_input"
+            android:gravity="center_vertical"
+            android:hint="1000"
+            android:inputType="numberDecimal"
+            android:maxLines="1"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonSaveSettings"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_button_primary"
+            android:gravity="center"
+            android:text="保存设置"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            app:backgroundTint="@null" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonResetDefaultRules"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_button_secondary"
+            android:gravity="center"
+            android:text="恢复默认规则"
+            android:textAllCaps="false"
+            android:textColor="@color/primary"
+            android:textSize="15sp"
+            app:backgroundTint="@null" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="答辩演示数据"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="用于课程答辩现场快速展示统计、异常筛选和详情备注，不会删除账号。"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonGenerateDemoData"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_button_primary"
+            android:gravity="center"
+            android:text="生成最近 7 天演示数据"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            app:backgroundTint="@null" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/buttonClearAttendanceData"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_button_danger"
+            android:gravity="center"
+            android:text="清空当前用户考勤记录"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            app:backgroundTint="@null" />
+    </LinearLayout>
+</ScrollView>

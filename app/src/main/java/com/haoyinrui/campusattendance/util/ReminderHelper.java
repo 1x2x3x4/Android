@@ -26,12 +26,21 @@ import java.util.Calendar;
  */
 public class ReminderHelper {
     public static final String CHANNEL_ID = "attendance_reminder_channel";
+    public static final String ACTION_DEMO_REMINDER = "com.haoyinrui.campusattendance.DEMO_REMINDER";
+    public static final String ACTION_SIGN_IN_REMINDER = "com.haoyinrui.campusattendance.SIGN_IN_REMINDER";
+    public static final String ACTION_CHECK_OUT_REMINDER = "com.haoyinrui.campusattendance.CHECK_OUT_REMINDER";
     private static final String PREF_NAME = "attendance_reminder_pref";
     private static final String KEY_DAILY_ENABLED = "daily_enabled";
+    private static final String KEY_SIGN_IN_ENABLED = "sign_in_enabled";
+    private static final String KEY_CHECK_OUT_ENABLED = "check_out_enabled";
+    private static final String KEY_SIGN_IN_TIME = "sign_in_time";
+    private static final String KEY_CHECK_OUT_TIME = "check_out_time";
     private static final int NOTIFICATION_ID = 2001;
     private static final int REQUEST_OPEN_MAIN = 3001;
     private static final int REQUEST_ALARM_REMINDER = 3002;
     private static final int REQUEST_DAILY_REMINDER = 3003;
+    private static final int REQUEST_SIGN_IN_REMINDER = 3004;
+    private static final int REQUEST_CHECK_OUT_REMINDER = 3005;
 
     private ReminderHelper() {
     }
@@ -70,6 +79,7 @@ public class ReminderHelper {
      */
     public static void scheduleDemoReminder(Context context) {
         Intent intent = new Intent(context, AttendanceReminderReceiver.class);
+        intent.setAction(ACTION_DEMO_REMINDER);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
                 REQUEST_ALARM_REMINDER,
@@ -87,7 +97,10 @@ public class ReminderHelper {
      * 开启每日 8:00 打卡提醒，状态保存到 SharedPreferences。
      */
     public static void enableDailyReminder(Context context) {
-        getPreferences(context).edit().putBoolean(KEY_DAILY_ENABLED, true).apply();
+        getPreferences(context).edit()
+                .putBoolean(KEY_DAILY_ENABLED, true)
+                .putBoolean(KEY_SIGN_IN_ENABLED, true)
+                .apply();
         scheduleDailyReminder(context);
     }
 
@@ -104,6 +117,61 @@ public class ReminderHelper {
 
     public static boolean isDailyReminderEnabled(Context context) {
         return getPreferences(context).getBoolean(KEY_DAILY_ENABLED, false);
+    }
+
+    public static void enableSignInReminder(Context context, String time) {
+        getPreferences(context).edit()
+                .putBoolean(KEY_SIGN_IN_ENABLED, true)
+                .putString(KEY_SIGN_IN_TIME, time)
+                .apply();
+        scheduleRepeatingReminder(context, ACTION_SIGN_IN_REMINDER, REQUEST_SIGN_IN_REMINDER, time);
+    }
+
+    public static void disableSignInReminder(Context context) {
+        getPreferences(context).edit().putBoolean(KEY_SIGN_IN_ENABLED, false).apply();
+        cancelReminder(context, ACTION_SIGN_IN_REMINDER, REQUEST_SIGN_IN_REMINDER);
+    }
+
+    public static boolean isSignInReminderEnabled(Context context) {
+        return getPreferences(context).getBoolean(KEY_SIGN_IN_ENABLED, false);
+    }
+
+    public static void enableCheckOutReminder(Context context, String time) {
+        getPreferences(context).edit()
+                .putBoolean(KEY_CHECK_OUT_ENABLED, true)
+                .putString(KEY_CHECK_OUT_TIME, time)
+                .apply();
+        scheduleRepeatingReminder(context, ACTION_CHECK_OUT_REMINDER, REQUEST_CHECK_OUT_REMINDER, time);
+    }
+
+    public static void disableCheckOutReminder(Context context) {
+        getPreferences(context).edit().putBoolean(KEY_CHECK_OUT_ENABLED, false).apply();
+        cancelReminder(context, ACTION_CHECK_OUT_REMINDER, REQUEST_CHECK_OUT_REMINDER);
+    }
+
+    public static boolean isCheckOutReminderEnabled(Context context) {
+        return getPreferences(context).getBoolean(KEY_CHECK_OUT_ENABLED, false);
+    }
+
+    public static void restoreEnabledReminders(Context context) {
+        SharedPreferences preferences = getPreferences(context);
+        if (preferences.getBoolean(KEY_SIGN_IN_ENABLED, false)) {
+            scheduleRepeatingReminder(
+                    context,
+                    ACTION_SIGN_IN_REMINDER,
+                    REQUEST_SIGN_IN_REMINDER,
+                    preferences.getString(KEY_SIGN_IN_TIME, "07:30"));
+        }
+        if (preferences.getBoolean(KEY_CHECK_OUT_ENABLED, false)) {
+            scheduleRepeatingReminder(
+                    context,
+                    ACTION_CHECK_OUT_REMINDER,
+                    REQUEST_CHECK_OUT_REMINDER,
+                    preferences.getString(KEY_CHECK_OUT_TIME, "17:00"));
+        }
+        if (preferences.getBoolean(KEY_DAILY_ENABLED, false)) {
+            scheduleDailyReminder(context);
+        }
     }
 
     /**
@@ -133,10 +201,51 @@ public class ReminderHelper {
 
     private static PendingIntent createDailyReminderPendingIntent(Context context) {
         Intent intent = new Intent(context, AttendanceReminderReceiver.class);
-        intent.setAction("com.haoyinrui.campusattendance.DAILY_REMINDER");
+        intent.setAction(ACTION_SIGN_IN_REMINDER);
         return PendingIntent.getBroadcast(
                 context,
                 REQUEST_DAILY_REMINDER,
+                intent,
+                getPendingIntentFlag());
+    }
+
+    private static void scheduleRepeatingReminder(Context context, String action, int requestCode, String time) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager == null) {
+            return;
+        }
+
+        Calendar calendar = Calendar.getInstance();
+        String normalizedTime = AttendanceRuleManager.normalizeTime(time);
+        String[] parts = normalizedTime.split(":");
+        calendar.set(Calendar.HOUR_OF_DAY, Integer.parseInt(parts[0]));
+        calendar.set(Calendar.MINUTE, Integer.parseInt(parts[1]));
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_MONTH, 1);
+        }
+
+        alarmManager.setInexactRepeating(
+                AlarmManager.RTC_WAKEUP,
+                calendar.getTimeInMillis(),
+                AlarmManager.INTERVAL_DAY,
+                createReminderPendingIntent(context, action, requestCode));
+    }
+
+    private static void cancelReminder(Context context, String action, int requestCode) {
+        AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.cancel(createReminderPendingIntent(context, action, requestCode));
+        }
+    }
+
+    private static PendingIntent createReminderPendingIntent(Context context, String action, int requestCode) {
+        Intent intent = new Intent(context, AttendanceReminderReceiver.class);
+        intent.setAction(action);
+        return PendingIntent.getBroadcast(
+                context,
+                requestCode,
                 intent,
                 getPendingIntentFlag());
     }
