@@ -1,76 +1,190 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/page_bg"
-    android:orientation="vertical"
-    android:padding="20dp">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="我的"
-        android:textColor="@color/text_primary"
-        android:textSize="24sp"
-        android:textStyle="bold" />
+    android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="18dp"
-        android:background="@drawable/bg_panel"
         android:orientation="vertical"
         android:padding="18dp">
 
-        <TextView
-            android:id="@+id/textProfileUsername"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/text_primary"
-            android:textSize="17sp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="我的"
+                android:textColor="@color/text_primary"
+                android:textSize="25sp"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/buttonOpenSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="设置"
+                android:padding="10dp"
+                android:src="@drawable/ic_nav_settings" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_panel"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/textAvatarInitial"
+                android:layout_width="60dp"
+                android:layout_height="60dp"
+                android:background="@drawable/bg_avatar"
+                android:gravity="center"
+                android:text="U"
+                android:textColor="@color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/textProfileUsername"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/textProfileHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_panel"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/itemOpenSettings"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="设置  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/itemMyRequests"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="我的申请  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/itemExportReport"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="导出月报  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/itemTeacherDemo"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="教师视角  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_panel"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/itemChangePassword"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="修改密码  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/itemProjectIntro"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="项目说明  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/itemAboutApp"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:background="?attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:text="关于应用  >"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/itemLogout"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/bg_button_danger"
+            android:gravity="center"
+            android:text="退出登录"
+            android:textColor="@color/white"
+            android:textSize="16sp"
             android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="身份：学生用户"
-            android:textColor="@color/text_secondary"
-            android:textSize="15sp" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="项目：基于 Android 的校园考勤打卡应用"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
     </LinearLayout>
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/buttonChangePassword"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginTop="18dp"
-        android:background="@drawable/bg_button_secondary"
-        android:gravity="center"
-        android:text="修改密码"
-        android:textAllCaps="false"
-        android:textColor="@color/primary"
-        android:textSize="15sp"
-        app:backgroundTint="@null" />
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/buttonLogout"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginTop="10dp"
-        android:background="@drawable/bg_button_danger"
-        android:gravity="center"
-        android:text="退出登录"
-        android:textAllCaps="false"
-        android:textColor="@color/white"
-        android:textSize="15sp"
-        app:backgroundTint="@null" />
-</LinearLayout>
+</ScrollView>

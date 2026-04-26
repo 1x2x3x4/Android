@@ -3,7 +3,6 @@ package com.haoyinrui.campusattendance.fragment;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,15 +16,15 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.haoyinrui.campusattendance.R;
 import com.haoyinrui.campusattendance.data.DatabaseHelper;
 import com.haoyinrui.campusattendance.model.AttendanceRecord;
 import com.haoyinrui.campusattendance.model.AttendanceStatistics;
-import com.haoyinrui.campusattendance.model.AttendanceSummary;
+import com.haoyinrui.campusattendance.model.CourseSchedule;
 import com.haoyinrui.campusattendance.util.AttendanceRuleManager;
 import com.haoyinrui.campusattendance.util.AttendanceStatusHelper;
 import com.haoyinrui.campusattendance.util.CampusLocationHelper;
-import com.haoyinrui.campusattendance.util.ReminderHelper;
 import com.haoyinrui.campusattendance.util.SessionManager;
 
 import java.text.SimpleDateFormat;
@@ -35,52 +34,49 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * 首页 Fragment：承载今日考勤、签到签退、统计和提醒入口。
- */
 public class HomeFragment extends Fragment {
-    private static final int REQUEST_NOTIFICATION_PERMISSION = 1001;
     private static final int REQUEST_LOCATION_PERMISSION = 1002;
 
+    private View rootView;
     private TextView textWelcome;
     private TextView textTodayDate;
-    private TextView textRuleInfo;
-    private TextView textTodayStatus;
-    private TextView textMonthSummary;
-    private TextView textStatisticsSummary;
-    private TextView textRecentSevenDays;
-    private Button buttonDailyReminder;
+    private TextView textStatusSummary;
+    private TextView textTodayResult;
+    private TextView textTodayScene;
+    private TextView textTodayCourseWindow;
+    private TextView textTodayCheckIn;
+    private TextView textTodayCheckOut;
+    private TextView textTodayRemark;
+    private TextView textOverviewSummary;
     private Button buttonCheckIn;
     private Button buttonCheckOut;
 
     private DatabaseHelper databaseHelper;
     private SessionManager sessionManager;
-    private AttendanceRuleManager ruleManager;
     private CampusLocationHelper campusLocationHelper;
     private String currentUsername;
+    private CourseSchedule currentCourseSchedule;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_home, container, false);
+        rootView = inflater.inflate(R.layout.fragment_home, container, false);
         databaseHelper = new DatabaseHelper(requireContext());
         sessionManager = new SessionManager(requireContext());
-        ruleManager = new AttendanceRuleManager(requireContext());
         campusLocationHelper = new CampusLocationHelper(requireContext());
         currentUsername = sessionManager.getUsername();
-        initViews(view);
-        bindEvents(view);
-        requestNotificationPermissionIfNeeded();
+        initViews(rootView);
+        bindEvents();
         refreshTodayStatus();
-        return view;
+        return rootView;
     }
 
     @Override
     public void onResume() {
         super.onResume();
         if (sessionManager != null && sessionManager.isLoggedIn()) {
-            ruleManager = new AttendanceRuleManager(requireContext());
+            currentUsername = sessionManager.getUsername();
             campusLocationHelper = new CampusLocationHelper(requireContext());
             refreshTodayStatus();
         }
@@ -89,40 +85,51 @@ public class HomeFragment extends Fragment {
     private void initViews(View view) {
         textWelcome = view.findViewById(R.id.textWelcome);
         textTodayDate = view.findViewById(R.id.textTodayDate);
-        textRuleInfo = view.findViewById(R.id.textRuleInfo);
-        textTodayStatus = view.findViewById(R.id.textTodayStatus);
-        textMonthSummary = view.findViewById(R.id.textMonthSummary);
-        textStatisticsSummary = view.findViewById(R.id.textStatisticsSummary);
-        textRecentSevenDays = view.findViewById(R.id.textRecentSevenDays);
-        buttonDailyReminder = view.findViewById(R.id.buttonDailyReminder);
+        textStatusSummary = view.findViewById(R.id.textStatusSummary);
+        textTodayResult = view.findViewById(R.id.textTodayResult);
+        textTodayScene = view.findViewById(R.id.textTodayScene);
+        textTodayCourseWindow = view.findViewById(R.id.textTodayCourseWindow);
+        textTodayCheckIn = view.findViewById(R.id.textTodayCheckIn);
+        textTodayCheckOut = view.findViewById(R.id.textTodayCheckOut);
+        textTodayRemark = view.findViewById(R.id.textTodayRemark);
+        textOverviewSummary = view.findViewById(R.id.textOverviewSummary);
         buttonCheckIn = view.findViewById(R.id.buttonCheckIn);
         buttonCheckOut = view.findViewById(R.id.buttonCheckOut);
+
+        buttonCheckIn.setContentDescription("签到");
+        buttonCheckOut.setContentDescription("签退");
     }
 
-    private void bindEvents(View view) {
+    private void bindEvents() {
         buttonCheckIn.setOnClickListener(v -> doCheckIn());
         buttonCheckOut.setOnClickListener(v -> doCheckOut());
-        view.findViewById(R.id.buttonReminder).setOnClickListener(v -> showReminder());
-        buttonDailyReminder.setOnClickListener(v -> toggleDailyReminder());
     }
 
     private void doCheckIn() {
+        CourseSchedule schedule = resolveActiveScheduleForCheckIn();
         String currentTime = getCurrentTime();
-        if (ruleManager.isBeforeSignInStart(currentTime)) {
-            Toast.makeText(requireContext(), "还未到签到开始时间：" + ruleManager.getSignInStart(), Toast.LENGTH_SHORT).show();
+        if (AttendanceRuleManager.compareTime(currentTime, schedule.getCheckInStart()) < 0) {
+            showMessage("还未到签到时间");
             return;
         }
         if (!isCampusLocationAllowed()) {
             return;
         }
 
-        boolean late = ruleManager.isLate(currentTime);
+        boolean late = AttendanceRuleManager.compareTime(currentTime, schedule.getCheckInDeadline()) > 0;
         String status = late ? DatabaseHelper.STATUS_LATE : DatabaseHelper.STATUS_CHECKED_IN;
-        String remark = late ? "超过签到截止时间，系统自动判定为迟到" : "";
-        boolean success = databaseHelper.checkIn(currentUsername, getTodayDate(), currentTime, status, remark);
-        Toast.makeText(requireContext(), success
-                ? (late ? "迟到签到已记录" : "签到成功")
-                : "今天已经签到过了", Toast.LENGTH_SHORT).show();
+        String remark = late ? "超过签到截止时间" : "";
+        boolean success = databaseHelper.checkIn(
+                currentUsername,
+                getTodayDate(),
+                currentTime,
+                status,
+                remark,
+                schedule.getCourseName(),
+                getCourseType(schedule),
+                schedule.getWeekdayLabel());
+
+        showMessage(success ? (late ? "签到成功，已记为迟到" : "签到成功") : "今天已签到");
         refreshTodayStatus();
     }
 
@@ -130,15 +137,22 @@ public class HomeFragment extends Fragment {
         String today = getTodayDate();
         String currentTime = getCurrentTime();
         AttendanceRecord record = databaseHelper.getAttendanceRecord(currentUsername, today);
-        String finalStatus = buildFinalStatus(record, currentTime);
+        if (record == null || !record.hasCheckIn()) {
+            showMessage("请先签到");
+            return;
+        }
+
+        CourseSchedule schedule = resolveScheduleForRecord(record);
+        String finalStatus = buildFinalStatus(record, schedule, currentTime);
         String remark = buildFinalRemark(record, finalStatus);
         int result = databaseHelper.checkOut(currentUsername, today, currentTime, finalStatus, remark);
+
         if (result == 1) {
-            Toast.makeText(requireContext(), "签退成功，考勤结果：" + finalStatus, Toast.LENGTH_SHORT).show();
+            showMessage("签退成功");
         } else if (result == 0) {
-            Toast.makeText(requireContext(), "今天已经签退过了", Toast.LENGTH_SHORT).show();
+            showMessage("今天已签退");
         } else {
-            Toast.makeText(requireContext(), "请先完成签到再签退", Toast.LENGTH_SHORT).show();
+            showMessage("请先签到");
         }
         refreshTodayStatus();
     }
@@ -149,130 +163,164 @@ public class HomeFragment extends Fragment {
         }
 
         String today = getTodayDate();
-        databaseHelper.markMissingCards(currentUsername, today, getCurrentTime(), ruleManager.getCheckOutEnd());
+        AttendanceRecord originalRecord = databaseHelper.getAttendanceRecord(currentUsername, today);
+        CourseSchedule markSchedule = originalRecord == null
+                ? resolveActiveScheduleForCheckIn()
+                : resolveScheduleForRecord(originalRecord);
+        databaseHelper.markMissingCards(currentUsername, today, getCurrentTime(), markSchedule.getCheckOutDeadline());
+
         AttendanceRecord record = databaseHelper.getAttendanceRecord(currentUsername, today);
+        currentCourseSchedule = record == null
+                ? resolveActiveScheduleForCheckIn()
+                : resolveScheduleForRecord(record);
+        boolean autoMatched = currentCourseSchedule.getId() != -1;
+        boolean hasCheckIn = record != null && record.hasCheckIn();
+        boolean hasCheckOut = record != null && record.hasCheckOut();
+        String statusText = record == null
+                ? DatabaseHelper.STATUS_NOT_CHECKED
+                : AttendanceStatusHelper.normalizeStatus(record.getStatus());
 
-        textWelcome.setText("欢迎你，" + currentUsername);
-        textTodayDate.setText("今天日期：" + today);
-        textRuleInfo.setText("考勤规则：" + ruleManager.formatForDisplay()
-                + (campusLocationHelper.isEnabled() ? "\n定位校验：已开启，" + campusLocationHelper.getDescription() : "\n定位校验：未开启"));
+        textWelcome.setText("你好，" + currentUsername);
+        textTodayDate.setText(today);
+        textStatusSummary.setText(buildStatusSummary(hasCheckIn, hasCheckOut, statusText, autoMatched));
+        textTodayResult.setText(buildTodayResultText(hasCheckIn, hasCheckOut, statusText));
+        textTodayScene.setText(currentCourseSchedule.getCourseName());
+        textTodayCourseWindow.setText(buildScheduleWindowText(currentCourseSchedule, autoMatched));
+        textTodayCheckIn.setText(hasCheckIn ? formatShortTime(record.getCheckInTime()) : "--");
+        textTodayCheckOut.setText(hasCheckOut ? formatShortTime(record.getCheckOutTime()) : "--");
 
-        String checkInText = "未签到";
-        String checkOutText = "未签退";
-        String statusText = buildNoRecordStatus();
-        String remarkText = "无备注";
-        boolean hasCheckIn = false;
-        boolean hasCheckOut = false;
-
-        if (record != null) {
-            hasCheckIn = record.hasCheckIn();
-            hasCheckOut = record.hasCheckOut();
-            checkInText = hasCheckIn ? record.getCheckInTime() : "未签到";
-            checkOutText = hasCheckOut ? record.getCheckOutTime() : "未签退";
-            statusText = AttendanceStatusHelper.normalizeStatus(record.getStatus());
-            remarkText = AttendanceStatusHelper.getRemarkOrDefault(record.getRemark());
+        String remark = record == null ? "" : AttendanceStatusHelper.getRemarkOrDefault(record.getRemark());
+        if (record != null && AttendanceStatusHelper.isAbnormal(statusText) && remark != null && !remark.isEmpty()) {
+            textTodayRemark.setVisibility(View.VISIBLE);
+            textTodayRemark.setText(remark);
+        } else {
+            textTodayRemark.setVisibility(View.GONE);
         }
 
-        textTodayStatus.setText("签到时间：" + checkInText
-                + "\n签退时间：" + checkOutText
-                + "\n今日考勤结果：" + statusText
-                + "\n备注：" + remarkText);
-
+        applyResultStyle(statusText, hasCheckIn, hasCheckOut);
         buttonCheckIn.setEnabled(!hasCheckIn);
         buttonCheckOut.setEnabled(hasCheckIn && !hasCheckOut);
         buttonCheckIn.setText(hasCheckIn ? "已签到" : "签到");
         buttonCheckOut.setText(hasCheckOut ? "已签退" : "签退");
-        refreshStatistics();
-        refreshDailyReminderButton();
+        refreshOverview();
     }
 
-    private void refreshStatistics() {
+    private void refreshOverview() {
         String monthPrefix = new SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(new Date());
-        AttendanceSummary summary = databaseHelper.getMonthlySummary(currentUsername, monthPrefix);
-        textMonthSummary.setText("本月统计：已签到 " + summary.getCheckInCount()
-                + " 天，完整打卡 " + summary.getCompletedCount() + " 天");
+        AttendanceStatistics statistics = databaseHelper.getAttendanceStatistics(
+                currentUsername,
+                monthPrefix,
+                getRecentSevenDates());
+        int monthAbnormal = statistics.getMonthAbnormalCount();
+        int totalAbnormal = statistics.getLateCount()
+                + statistics.getEarlyLeaveCount()
+                + statistics.getMissingCardCount();
 
-        AttendanceStatistics statistics = databaseHelper.getAttendanceStatistics(currentUsername, monthPrefix, getRecentSevenDates());
-        textStatisticsSummary.setText("累计签到：" + statistics.getTotalCheckInCount()
-                + " 次\n正常：" + statistics.getNormalCount()
-                + " 次，迟到：" + statistics.getLateCount()
-                + " 次，早退：" + statistics.getEarlyLeaveCount()
-                + " 次，缺卡：" + statistics.getMissingCardCount()
-                + " 次\n本月正常：" + statistics.getMonthNormalCount()
-                + " 天，本月异常：" + statistics.getMonthAbnormalCount() + " 天");
-        textRecentSevenDays.setText(statistics.getRecentSevenDaysText());
-    }
-
-    private void showReminder() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestNotificationPermissionIfNeeded();
-            Toast.makeText(requireContext(), "请先允许通知权限，再演示提醒功能", Toast.LENGTH_SHORT).show();
+        if (statistics.getTotalCheckInCount() == 0) {
+            textOverviewSummary.setText("还没有考勤记录");
             return;
         }
 
-        boolean shown = ReminderHelper.showAttendanceNotification(requireContext(), "校园考勤提醒", "请记得完成今天的签到或签退。");
-        ReminderHelper.scheduleDemoReminder(requireContext());
-        Toast.makeText(requireContext(), shown
-                ? "已发送通知，并安排 10 秒后再次提醒"
-                : "通知暂未发送，请检查系统通知权限", Toast.LENGTH_LONG).show();
+        textOverviewSummary.setText(
+                "本月 " + statistics.getMonthCheckInCount() + " 天 · 异常 " + monthAbnormal + " · 缺卡 "
+                        + statistics.getMissingCardCount()
+                        + "\n累计 " + statistics.getTotalCheckInCount() + " 次 · 异常 " + totalAbnormal
+                        + " · 近7天正常 " + countRecentNormalDays());
     }
 
-    private void toggleDailyReminder() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestNotificationPermissionIfNeeded();
-            Toast.makeText(requireContext(), "请先允许通知权限，再开启每日提醒", Toast.LENGTH_SHORT).show();
+    private int countRecentNormalDays() {
+        int count = 0;
+        for (String date : getRecentSevenDates()) {
+            AttendanceRecord record = databaseHelper.getAttendanceRecord(currentUsername, date);
+            if (record != null && AttendanceStatusHelper.isNormal(record.getStatus())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void applyResultStyle(String statusText, boolean hasCheckIn, boolean hasCheckOut) {
+        if (!hasCheckIn) {
+            textTodayResult.setBackgroundResource(R.drawable.bg_badge_neutral);
+            textTodayResult.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
             return;
         }
 
-        if (ReminderHelper.isDailyReminderEnabled(requireContext())) {
-            ReminderHelper.disableDailyReminder(requireContext());
-            ReminderHelper.disableSignInReminder(requireContext());
-            ReminderHelper.disableCheckOutReminder(requireContext());
-            Toast.makeText(requireContext(), "已关闭签到和签退提醒", Toast.LENGTH_SHORT).show();
+        if (!hasCheckOut) {
+            textTodayResult.setBackgroundResource(R.drawable.bg_badge_normal);
+            textTodayResult.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary));
+            return;
+        }
+
+        if (AttendanceStatusHelper.isAbnormal(statusText)) {
+            textTodayResult.setBackgroundResource(R.drawable.bg_badge_abnormal);
+            textTodayResult.setTextColor(ContextCompat.getColor(requireContext(), R.color.accent));
         } else {
-            ReminderHelper.enableDailyReminder(requireContext());
-            ReminderHelper.enableSignInReminder(requireContext(), ruleManager.getSignInStart());
-            ReminderHelper.enableCheckOutReminder(requireContext(), ruleManager.getCheckOutStart());
-            Toast.makeText(requireContext(), "已开启签到和签退提醒", Toast.LENGTH_SHORT).show();
+            textTodayResult.setBackgroundResource(R.drawable.bg_badge_normal);
+            textTodayResult.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary));
         }
-        refreshDailyReminderButton();
     }
 
-    private void refreshDailyReminderButton() {
-        boolean enabled = ReminderHelper.isSignInReminderEnabled(requireContext())
-                || ReminderHelper.isCheckOutReminderEnabled(requireContext())
-                || ReminderHelper.isDailyReminderEnabled(requireContext());
-        buttonDailyReminder.setText(enabled ? "关闭签到/签退提醒" : "开启签到/签退提醒");
+    private String buildStatusSummary(boolean hasCheckIn, boolean hasCheckOut, String statusText,
+                                      boolean autoMatched) {
+        if (!hasCheckIn) {
+            return autoMatched ? "当前课程待签到" : "当前无匹配课程";
+        }
+        if (!hasCheckOut) {
+            return "已签到，待签退";
+        }
+        return AttendanceStatusHelper.isAbnormal(statusText) ? "今日异常" : "今日正常";
     }
 
-    private void requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+    private String buildTodayResultText(boolean hasCheckIn, boolean hasCheckOut, String statusText) {
+        if (!hasCheckIn) {
+            return "未打卡";
         }
+        if (!hasCheckOut) {
+            return "已签到";
+        }
+        return AttendanceStatusHelper.normalizeStatus(statusText);
+    }
+
+    private String buildScheduleWindowText(CourseSchedule schedule, boolean autoMatched) {
+        return (autoMatched ? "自动匹配" : "普通到校")
+                + " · 签到 " + formatShortTime(schedule.getCheckInStart())
+                + "-" + formatShortTime(schedule.getCheckInDeadline())
+                + " · 签退 " + formatShortTime(schedule.getCheckOutStart())
+                + "-" + formatShortTime(schedule.getCheckOutDeadline());
+    }
+
+    private CourseSchedule resolveActiveScheduleForCheckIn() {
+        CourseSchedule schedule = databaseHelper.getRecommendedCourseSchedule(
+                Calendar.getInstance().get(Calendar.DAY_OF_WEEK),
+                getCurrentTime());
+        return schedule != null ? schedule : databaseHelper.getFallbackCourseSchedule();
+    }
+
+    private CourseSchedule resolveScheduleForRecord(AttendanceRecord record) {
+        if (record != null && record.getCourseName() != null && !record.getCourseName().trim().isEmpty()) {
+            List<CourseSchedule> schedules = databaseHelper.getCourseSchedules();
+            for (CourseSchedule schedule : schedules) {
+                if (record.getCourseName().equals(schedule.getCourseName())) {
+                    return schedule;
+                }
+            }
+        }
+        return databaseHelper.getFallbackCourseSchedule();
+    }
+
+    private String getCourseType(CourseSchedule schedule) {
+        return schedule.getId() == -1 ? "日常考勤" : "课程考勤";
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
-            Toast.makeText(requireContext(),
-                    grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                            ? "通知权限已允许，可正常接收考勤提醒"
-                            : "通知权限被拒绝，提醒功能可能无法显示通知",
-                    Toast.LENGTH_LONG).show();
-        } else if (requestCode == REQUEST_LOCATION_PERMISSION) {
-            Toast.makeText(requireContext(),
-                    grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                            ? "位置权限已允许，请再次点击签到"
-                            : "位置权限被拒绝，开启校园范围校验时无法签到",
-                    Toast.LENGTH_LONG).show();
+        if (requestCode == REQUEST_LOCATION_PERMISSION) {
+            showMessage(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                    ? "位置权限已开启"
+                    : "未开启位置权限");
         }
     }
 
@@ -284,21 +332,11 @@ public class HomeFragment extends Fragment {
         return new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
     }
 
-    private String buildNoRecordStatus() {
-        String currentTime = getCurrentTime();
-        if (ruleManager.isAfterCheckOutEnd(currentTime)) {
-            return DatabaseHelper.STATUS_MISSING_CARD;
-        }
-        if (ruleManager.isLate(currentTime)) {
-            return "未签到（已超过签到截止，签到将记为迟到）";
-        }
-        return DatabaseHelper.STATUS_NOT_CHECKED;
-    }
+    private String buildFinalStatus(AttendanceRecord record, CourseSchedule schedule, String checkOutTime) {
+        boolean late = record.getStatus() != null && record.getStatus().contains(DatabaseHelper.STATUS_LATE);
+        boolean earlyLeave = AttendanceRuleManager.compareTime(checkOutTime, schedule.getCheckOutStart()) < 0;
+        boolean missing = AttendanceRuleManager.compareTime(checkOutTime, schedule.getCheckOutDeadline()) > 0;
 
-    private String buildFinalStatus(AttendanceRecord record, String checkOutTime) {
-        boolean late = record != null && record.getStatus() != null && record.getStatus().contains(DatabaseHelper.STATUS_LATE);
-        boolean earlyLeave = ruleManager.isEarlyLeave(checkOutTime);
-        boolean missing = ruleManager.isAfterCheckOutEnd(checkOutTime);
         if (missing) {
             return DatabaseHelper.STATUS_MISSING_CARD;
         }
@@ -321,10 +359,10 @@ public class HomeFragment extends Fragment {
         }
         if (DatabaseHelper.STATUS_EARLY_LEAVE.equals(finalStatus)
                 || DatabaseHelper.STATUS_LATE_EARLY.equals(finalStatus)) {
-            appendRemark(builder, "早于签退允许开始时间，系统自动判定为早退");
+            appendRemark(builder, "早于签退开始时间");
         }
         if (DatabaseHelper.STATUS_MISSING_CARD.equals(finalStatus)) {
-            appendRemark(builder, "超过签退截止时间，系统自动判定为缺卡");
+            appendRemark(builder, "超过签退截止时间");
         }
         return builder.toString();
     }
@@ -343,17 +381,19 @@ public class HomeFragment extends Fragment {
             return true;
         }
         if (!campusLocationHelper.hasLocationPermission()) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION_PERMISSION);
-            Toast.makeText(requireContext(), "请允许位置权限后再签到", Toast.LENGTH_SHORT).show();
+            requestPermissions(
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
+            showMessage("请先开启位置权限");
             return false;
         }
         Location location = campusLocationHelper.getLastKnownLocation();
         if (location == null) {
-            Toast.makeText(requireContext(), "暂时无法获取当前位置，请开启系统定位后重试", Toast.LENGTH_SHORT).show();
+            showMessage("无法获取当前位置");
             return false;
         }
         if (!campusLocationHelper.isInCampus(location)) {
-            Toast.makeText(requireContext(), "当前位置不在校园打卡范围内", Toast.LENGTH_SHORT).show();
+            showMessage("当前位置不在校园打卡范围内");
             return false;
         }
         return true;
@@ -369,5 +409,20 @@ public class HomeFragment extends Fragment {
             calendar.add(Calendar.DAY_OF_MONTH, 1);
         }
         return dates;
+    }
+
+    private String formatShortTime(String timeText) {
+        if (timeText == null || timeText.trim().isEmpty() || "--".equals(timeText)) {
+            return "--";
+        }
+        return timeText.length() >= 5 ? timeText.substring(0, 5) : timeText;
+    }
+
+    private void showMessage(String message) {
+        if (rootView != null) {
+            Snackbar.make(rootView, message, Snackbar.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+        }
     }
 }

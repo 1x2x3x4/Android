@@ -6,9 +6,11 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.haoyinrui.campusattendance.R;
+import com.haoyinrui.campusattendance.data.DatabaseHelper;
 import com.haoyinrui.campusattendance.model.AttendanceRecord;
 import com.haoyinrui.campusattendance.util.AttendanceStatusHelper;
 
@@ -16,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * RecyclerView 适配器，用于展示历史考勤记录。
+ * 考勤记录列表适配器：突出日期、状态、课程场景和签到签退摘要，便于快速扫读。
  */
 public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.RecordViewHolder> {
     private final List<AttendanceRecord> records = new ArrayList<>();
@@ -47,16 +49,37 @@ public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.Re
     @Override
     public void onBindViewHolder(@NonNull RecordViewHolder holder, int position) {
         AttendanceRecord record = records.get(position);
-        holder.textDate.setText("日期：" + record.getDate());
-        holder.textCheckIn.setText("签到：" + displayTime(record.getCheckInTime()));
-        holder.textCheckOut.setText("签退：" + displayTime(record.getCheckOutTime()));
-        holder.textStatus.setText("状态：" + AttendanceStatusHelper.normalizeStatus(record.getStatus()));
-        holder.itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (onRecordClickListener != null) {
-                    onRecordClickListener.onRecordClick(record);
-                }
+        String status = AttendanceStatusHelper.normalizeStatus(record.getStatus());
+
+        holder.textDate.setText(record.getDate());
+        holder.textStatus.setText(status);
+        holder.textCourse.setText("场景：" + safeText(record.getCourseName()));
+        holder.textTimeSummary.setText("签到 " + displayTime(record.getCheckInTime())
+                + "  ·  签退 " + displayTime(record.getCheckOutTime()));
+
+        if (AttendanceStatusHelper.isNormal(status)) {
+            holder.textStatus.setBackgroundResource(R.drawable.bg_badge_normal);
+            holder.textStatus.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.primary));
+        } else if (AttendanceStatusHelper.isAbnormal(status)) {
+            holder.textStatus.setBackgroundResource(R.drawable.bg_badge_abnormal);
+            holder.textStatus.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.accent));
+        } else {
+            holder.textStatus.setBackgroundResource(R.drawable.bg_badge_neutral);
+            holder.textStatus.setTextColor(ContextCompat.getColor(holder.itemView.getContext(), R.color.text_primary));
+        }
+
+        if (record.getAppealStatus() != null
+                && !record.getAppealStatus().isEmpty()
+                && !DatabaseHelper.APPEAL_NONE.equals(record.getAppealStatus())) {
+            holder.textAppeal.setVisibility(View.VISIBLE);
+            holder.textAppeal.setText("申诉：" + record.getAppealStatus());
+        } else {
+            holder.textAppeal.setVisibility(View.GONE);
+        }
+
+        holder.itemView.setOnClickListener(v -> {
+            if (onRecordClickListener != null) {
+                onRecordClickListener.onRecordClick(record);
             }
         });
     }
@@ -67,21 +90,27 @@ public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.Re
     }
 
     private String displayTime(String time) {
-        return time == null || time.isEmpty() ? "未记录" : time;
+        return time == null || time.isEmpty() ? "--" : time;
+    }
+
+    private String safeText(String text) {
+        return text == null || text.isEmpty() ? "普通到校考勤" : text;
     }
 
     static class RecordViewHolder extends RecyclerView.ViewHolder {
         TextView textDate;
-        TextView textCheckIn;
-        TextView textCheckOut;
         TextView textStatus;
+        TextView textCourse;
+        TextView textTimeSummary;
+        TextView textAppeal;
 
         RecordViewHolder(@NonNull View itemView) {
             super(itemView);
             textDate = itemView.findViewById(R.id.textRecordDate);
-            textCheckIn = itemView.findViewById(R.id.textRecordCheckIn);
-            textCheckOut = itemView.findViewById(R.id.textRecordCheckOut);
             textStatus = itemView.findViewById(R.id.textRecordStatus);
+            textCourse = itemView.findViewById(R.id.textRecordCourse);
+            textTimeSummary = itemView.findViewById(R.id.textRecordTimeSummary);
+            textAppeal = itemView.findViewById(R.id.textRecordAppeal);
         }
     }
 }

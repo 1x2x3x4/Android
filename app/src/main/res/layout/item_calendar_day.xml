@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.haoyinrui.campusattendance.view.SquareFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layoutCalendarCell"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="3dp"
+    android:background="@drawable/bg_calendar_day_default"
+    android:foreground="?attr/selectableItemBackgroundBorderless"
+    android:padding="6dp">
+
+    <TextView
+        android:id="@+id/textCalendarDay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:textColor="@color/text_primary"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+</com.haoyinrui.campusattendance.view.SquareFrameLayout>

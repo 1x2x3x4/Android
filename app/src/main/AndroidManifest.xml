@@ -34,6 +34,15 @@
             android:name=".AttendanceSettingsActivity"
             android:exported="false" />
         <activity
+            android:name=".CourseScheduleActivity"
+            android:exported="false" />
+        <activity
+            android:name=".MyRequestsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".TeacherDashboardActivity"
+            android:exported="false" />
+        <activity
             android:name=".ProfileActivity"
             android:exported="false" />
         <activity

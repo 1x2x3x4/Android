@@ -1,16 +1,23 @@
 package com.haoyinrui.campusattendance;
 
+import android.Manifest;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
+import androidx.core.content.ContextCompat;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.haoyinrui.campusattendance.data.DatabaseHelper;
 import com.haoyinrui.campusattendance.util.AttendanceRuleManager;
 import com.haoyinrui.campusattendance.util.CampusLocationHelper;
@@ -18,9 +25,12 @@ import com.haoyinrui.campusattendance.util.ReminderHelper;
 import com.haoyinrui.campusattendance.util.SessionManager;
 
 /**
- * 考勤设置页：配置时间规则、提醒开关和校园范围校验。
+ * 设置页：保留规则、提醒、定位和演示数据配置。
  */
 public class AttendanceSettingsActivity extends AppCompatActivity {
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 3001;
+
+    private View rootView;
     private EditText editSignInStart;
     private EditText editSignInEnd;
     private EditText editCheckOutStart;
@@ -31,11 +41,14 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
     private SwitchCompat switchSignInReminder;
     private SwitchCompat switchCheckOutReminder;
     private SwitchCompat switchLocationCheck;
+    private TextView textReminderPermissionStatus;
+    private TextView textLocationPermissionStatus;
 
     private AttendanceRuleManager ruleManager;
     private CampusLocationHelper campusLocationHelper;
     private DatabaseHelper databaseHelper;
     private SessionManager sessionManager;
+    private boolean pendingSaveAfterPermission;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +65,14 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
         bindEvents();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshPermissionStatus();
+    }
+
     private void initViews() {
+        rootView = findViewById(R.id.layoutSettingsRoot);
         editSignInStart = findViewById(R.id.editSignInStart);
         editSignInEnd = findViewById(R.id.editSignInEnd);
         editCheckOutStart = findViewById(R.id.editCheckOutStart);
@@ -63,6 +83,8 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
         switchSignInReminder = findViewById(R.id.switchSignInReminder);
         switchCheckOutReminder = findViewById(R.id.switchCheckOutReminder);
         switchLocationCheck = findViewById(R.id.switchLocationCheck);
+        textReminderPermissionStatus = findViewById(R.id.textReminderPermissionStatus);
+        textLocationPermissionStatus = findViewById(R.id.textLocationPermissionStatus);
     }
 
     private void loadSettings() {
@@ -76,43 +98,21 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
         switchSignInReminder.setChecked(ReminderHelper.isSignInReminderEnabled(this));
         switchCheckOutReminder.setChecked(ReminderHelper.isCheckOutReminderEnabled(this));
         switchLocationCheck.setChecked(campusLocationHelper.isEnabled());
+        refreshPermissionStatus();
     }
 
     private void bindEvents() {
-        findViewById(R.id.buttonSaveSettings).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                saveSettings();
-            }
-        });
+        findViewById(R.id.buttonSaveSettings).setOnClickListener(v -> saveSettings());
+        findViewById(R.id.buttonBackFromSettings).setOnClickListener(v -> finish());
+        findViewById(R.id.buttonOpenCourseSchedule).setOnClickListener(v ->
+                startActivity(new android.content.Intent(this, CourseScheduleActivity.class)));
+        findViewById(R.id.buttonResetDefaultRules).setOnClickListener(v -> confirmResetDefaults());
+        findViewById(R.id.buttonGenerateDemoData).setOnClickListener(v -> confirmGenerateDemoData());
+        findViewById(R.id.buttonClearAttendanceData).setOnClickListener(v -> confirmClearAttendanceData());
 
-        findViewById(R.id.buttonBackFromSettings).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                finish();
-            }
-        });
-
-        findViewById(R.id.buttonResetDefaultRules).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                resetDefaults();
-            }
-        });
-
-        findViewById(R.id.buttonGenerateDemoData).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                generateDemoData();
-            }
-        });
-
-        findViewById(R.id.buttonClearAttendanceData).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                confirmClearAttendanceData();
-            }
-        });
+        switchSignInReminder.setOnCheckedChangeListener((buttonView, isChecked) -> refreshPermissionStatus());
+        switchCheckOutReminder.setOnCheckedChangeListener((buttonView, isChecked) -> refreshPermissionStatus());
+        switchLocationCheck.setOnCheckedChangeListener((buttonView, isChecked) -> refreshPermissionStatus());
     }
 
     private void saveSettings() {
@@ -125,25 +125,36 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
                 || !AttendanceRuleManager.isValidTime(signInEnd)
                 || !AttendanceRuleManager.isValidTime(checkOutStart)
                 || !AttendanceRuleManager.isValidTime(checkOutEnd)) {
-            Toast.makeText(this, "时间格式应为 HH:mm，例如 08:10", Toast.LENGTH_SHORT).show();
+            showMessage("时间格式错误");
             return;
         }
         if (AttendanceRuleManager.compareTime(signInStart, signInEnd) > 0
                 || AttendanceRuleManager.compareTime(checkOutStart, checkOutEnd) > 0) {
-            Toast.makeText(this, "开始时间不能晚于截止时间", Toast.LENGTH_SHORT).show();
+            showMessage("开始时间不能晚于结束时间");
             return;
         }
         if (TextUtils.isEmpty(editCampusLatitude.getText())
                 || TextUtils.isEmpty(editCampusLongitude.getText())
                 || TextUtils.isEmpty(editCampusRadius.getText())) {
-            Toast.makeText(this, "请填写校园经纬度和半径", Toast.LENGTH_SHORT).show();
+            showMessage("请完善定位参数");
             return;
         }
         if (!isLocationConfigValid()) {
-            Toast.makeText(this, "校园经纬度或半径格式不正确", Toast.LENGTH_SHORT).show();
+            showMessage("定位参数错误");
             return;
         }
 
+        if (needNotificationPermission()) {
+            pendingSaveAfterPermission = true;
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+            showMessage("请先开启通知权限");
+            return;
+        }
+
+        applySettings(signInStart, signInEnd, checkOutStart, checkOutEnd);
+    }
+
+    private void applySettings(String signInStart, String signInEnd, String checkOutStart, String checkOutEnd) {
         ruleManager.saveRules(signInStart, signInEnd, checkOutStart, checkOutEnd);
         campusLocationHelper.saveSettings(
                 switchLocationCheck.isChecked(),
@@ -152,18 +163,18 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
                 editCampusRadius.getText().toString().trim());
 
         if (switchSignInReminder.isChecked()) {
-            ReminderHelper.enableSignInReminder(this, ruleManager.getSignInStart());
+            ReminderHelper.enableSignInReminder(this, signInStart);
         } else {
             ReminderHelper.disableSignInReminder(this);
         }
 
         if (switchCheckOutReminder.isChecked()) {
-            ReminderHelper.enableCheckOutReminder(this, ruleManager.getCheckOutStart());
+            ReminderHelper.enableCheckOutReminder(this, checkOutStart);
         } else {
             ReminderHelper.disableCheckOutReminder(this);
         }
 
-        Toast.makeText(this, "考勤设置已保存", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
         finish();
     }
 
@@ -180,6 +191,39 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
         }
     }
 
+    private boolean needNotificationPermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && (switchSignInReminder.isChecked() || switchCheckOutReminder.isChecked())
+                && ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void refreshPermissionStatus() {
+        if (textReminderPermissionStatus != null) {
+            boolean remindersEnabled = switchSignInReminder.isChecked() || switchCheckOutReminder.isChecked();
+            boolean notificationGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                    || ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+            if (!remindersEnabled) {
+                textReminderPermissionStatus.setText("");
+            } else if (notificationGranted) {
+                textReminderPermissionStatus.setText("通知已开启");
+            } else {
+                textReminderPermissionStatus.setText("未开启通知权限");
+            }
+        }
+
+        if (textLocationPermissionStatus != null) {
+            if (!switchLocationCheck.isChecked()) {
+                textLocationPermissionStatus.setText("");
+            } else if (campusLocationHelper.hasLocationPermission()) {
+                textLocationPermissionStatus.setText("位置权限已开启");
+            } else {
+                textLocationPermissionStatus.setText("未开启位置权限");
+            }
+        }
+    }
+
     private void resetDefaults() {
         ruleManager.resetDefaults();
         campusLocationHelper.resetDefaults();
@@ -187,28 +231,70 @@ public class AttendanceSettingsActivity extends AppCompatActivity {
         ReminderHelper.disableCheckOutReminder(this);
         ReminderHelper.disableDailyReminder(this);
         loadSettings();
-        Toast.makeText(this, "已恢复默认考勤规则", Toast.LENGTH_SHORT).show();
+        showMessage("已恢复默认");
+    }
+
+    private void confirmResetDefaults() {
+        new AlertDialog.Builder(this)
+                .setTitle("恢复默认")
+                .setMessage("确定恢复默认设置？")
+                .setPositiveButton("恢复", (dialogInterface, i) -> resetDefaults())
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void generateDemoData() {
-        databaseHelper.generateDemoRecords(sessionManager.getUsername());
-        Toast.makeText(this, "已生成最近 7 天演示考勤数据", Toast.LENGTH_SHORT).show();
-        finish();
+        databaseHelper.generateQuarterDemoRecords(sessionManager.getUsername());
+        showMessage("已写入最近三个月演示数据");
+    }
+
+    private void confirmGenerateDemoData() {
+        new AlertDialog.Builder(this)
+                .setTitle("写入演示数据")
+                .setMessage("将清空当前用户现有考勤与申请记录，并写入最近三个月模拟数据。是否继续？")
+                .setPositiveButton("写入", (dialog, which) -> generateDemoData())
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void confirmClearAttendanceData() {
         new AlertDialog.Builder(this)
-                .setTitle("清空考勤记录")
-                .setMessage("将清空当前用户的考勤记录，但不会删除账号。是否继续？")
-                .setPositiveButton("确认清空", new DialogInterface.OnClickListener() {
+                .setTitle("清空记录")
+                .setMessage("确定清空当前用户记录？")
+                .setPositiveButton("清空", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         databaseHelper.clearAttendanceRecords(sessionManager.getUsername());
-                        Toast.makeText(AttendanceSettingsActivity.this, "当前用户考勤记录已清空", Toast.LENGTH_SHORT).show();
-                        finish();
+                        showMessage("已清空");
                     }
                 })
                 .setNegativeButton("取消", null)
                 .show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (pendingSaveAfterPermission) {
+                    pendingSaveAfterPermission = false;
+                    saveSettings();
+                }
+            } else {
+                pendingSaveAfterPermission = false;
+                refreshPermissionStatus();
+                showMessage("通知权限未开启");
+            }
+        }
+    }
+
+    private void showMessage(String message) {
+        if (rootView != null) {
+            Snackbar.make(rootView, message, Snackbar.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        }
     }
 }

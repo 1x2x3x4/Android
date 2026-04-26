@@ -174,7 +174,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void generateDemoData() {
-        databaseHelper.generateDemoRecords(sessionManager.getUsername());
+        databaseHelper.generateQuarterDemoRecords(sessionManager.getUsername());
         Toast.makeText(requireContext(), "已生成最近 7 天演示考勤数据，可切到首页或记录查看", Toast.LENGTH_LONG).show();
     }
 

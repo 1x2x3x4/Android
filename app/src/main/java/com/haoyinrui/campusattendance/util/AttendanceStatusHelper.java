@@ -3,7 +3,7 @@ package com.haoyinrui.campusattendance.util;
 import com.haoyinrui.campusattendance.data.DatabaseHelper;
 
 /**
- * 统一考勤状态展示与分类，避免首页、列表、详情和统计出现不同叫法。
+ * 统一考勤状态显示与分类。
  */
 public class AttendanceStatusHelper {
     private AttendanceStatusHelper() {
@@ -25,6 +25,10 @@ public class AttendanceStatusHelper {
 
     public static boolean isNormal(String status) {
         return DatabaseHelper.STATUS_NORMAL.equals(normalizeStatus(status));
+    }
+
+    public static boolean isLeave(String status) {
+        return DatabaseHelper.STATUS_LEAVE.equals(normalizeStatus(status));
     }
 
     public static boolean isAbnormal(String status) {

@@ -26,6 +26,8 @@ import java.util.Calendar;
  */
 public class ReminderHelper {
     public static final String CHANNEL_ID = "attendance_reminder_channel";
+    public static final String CHANNEL_SIGN_IN_ID = "attendance_sign_in_channel";
+    public static final String CHANNEL_CHECK_OUT_ID = "attendance_check_out_channel";
     public static final String ACTION_DEMO_REMINDER = "com.haoyinrui.campusattendance.DEMO_REMINDER";
     public static final String ACTION_SIGN_IN_REMINDER = "com.haoyinrui.campusattendance.SIGN_IN_REMINDER";
     public static final String ACTION_CHECK_OUT_REMINDER = "com.haoyinrui.campusattendance.CHECK_OUT_REMINDER";
@@ -46,7 +48,11 @@ public class ReminderHelper {
     }
 
     public static boolean showAttendanceNotification(Context context, String title, String message) {
-        createNotificationChannel(context);
+        return showAttendanceNotification(context, title, message, CHANNEL_ID);
+    }
+
+    public static boolean showAttendanceNotification(Context context, String title, String message, String channelId) {
+        createNotificationChannels(context);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
@@ -62,7 +68,7 @@ public class ReminderHelper {
                 intent,
                 getPendingIntentFlag());
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_notification_attendance)
                 .setContentTitle(title)
                 .setContentText(message)
@@ -254,16 +260,28 @@ public class ReminderHelper {
         return context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
     }
 
-    private static void createNotificationChannel(Context context) {
+    private static void createNotificationChannels(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
+            NotificationChannel defaultChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "校园考勤提醒",
                     NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("用于提示学生完成签到或签退");
+            defaultChannel.setDescription("用于演示和通用考勤提醒");
+            NotificationChannel signInChannel = new NotificationChannel(
+                    CHANNEL_SIGN_IN_ID,
+                    "签到提醒",
+                    NotificationManager.IMPORTANCE_DEFAULT);
+            signInChannel.setDescription("用于提醒学生按时完成课程或到校签到");
+            NotificationChannel checkOutChannel = new NotificationChannel(
+                    CHANNEL_CHECK_OUT_ID,
+                    "签退提醒",
+                    NotificationManager.IMPORTANCE_DEFAULT);
+            checkOutChannel.setDescription("用于提醒学生按时完成课程或离校签退");
             NotificationManager manager = context.getSystemService(NotificationManager.class);
             if (manager != null) {
-                manager.createNotificationChannel(channel);
+                manager.createNotificationChannel(defaultChannel);
+                manager.createNotificationChannel(signInChannel);
+                manager.createNotificationChannel(checkOutChannel);
             }
         }
     }
