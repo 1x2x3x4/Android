@@ -11,4 +11,10 @@
     </style>
 
     <style name="Theme.CampusAttendance" parent="Base.Theme.CampusAttendance" />
+
+    <style name="TextAppearance.CampusAttendance.BottomNav" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
 </resources>
